@@ -1,75 +1,105 @@
 
 # 🔐 SAP Security Parameter Analyzer
 
-SAP sistemlerindeki profil parametrelerini **RSPARAM raporu** üzerinden otomatik çeken, güvenlik önerileriyle karşılaştıran ve detaylı analiz raporu üreten Python scripti.
+# Kodun Genel Özeti
+
+Bu script, bir SAP sistemi üzerindeki güvenlik parametrelerini **otomatik olarak analiz etmek** için tasarlanmıştır.
+
+Temel amacı:
+
+- `parametreler.xlsx` dosyasında listelenen kritik güvenlik parametrelerini okumak  
+- SAP sistemindeki mevcut değerleri çekmek  
+- Önerilen değerlerle karşılaştırmak  
+- Sonuçları `security_analysis_report.xlsx` adlı detaylı bir rapora dönüştürmek  
+
+## 1. Başlatma ve Hazırlık
+
+- Script ilk olarak `parametreler.xlsx` dosyasını okur ve hangi SAP parametrelerinin denetleneceğini belirler.
+- Ardından kullanıcının bilgisayarındaki SAP Logon programını başlatır.
+- Belirtilen SAP sistemine kullanıcı adı ve şifre ile otomatik bağlanır.
 
 
-## 🚀 Ne Yapar?
+## 2. SAP'den Veri Çekme (`sap_connect_and_extract` fonksiyonu)
 
-`Parametre_incelemesi.py` scripti aşağıdaki işlemleri gerçekleştirir:
+- SAP sistemine giriş yaptıktan sonra `SA38` işlem kodunu çalıştırır.
+- `RSPARAM` raporunu açar (sistemdeki tüm parametreleri gösterir).
 
-- SAP GUI Scripting kullanarak **RSPARAM** raporundan profil parametrelerini çeker  
-- Çekilen değerleri `Parametreler.xlsx` içindeki önerilen değerlerle karşılaştırır  
-- Sonuca göre durumu belirler:
+Her parametre için:
 
-  - SAME  
-  - LOW  
-  - HIGH  
-  - DIFFERENT  
+- Excel’den aldığı parametre adına göre arama yapar.
+- Mevcut değerini okur.
+- Sistem varsayılan değerini alır.
+- Kullanıcı tarafından atanmış değeri kaydeder.
+- Parametre bulunamazsa bunu raporlar.
 
-- Duruma uygun güvenlik tavsiyesini Excel’den seçer  
-- Tüm analizi `security_analysis_report.xlsx` dosyasına yazar  
+Tüm parametreler işlendiğinde:
 
-
-
-## 📌 RSPARAM Nedir?
-
-RSPARAM, SAP sistemlerinde **instance/system profil parametrelerini** listelemek için kullanılan teknik bir rapordur.
-
-- Kernel ve sistem ayarlarını okur  
-- Güvenlik hardening süreçlerinde kritik rol oynar  
+- Ham verileri liste haline getirir.
+- SAP bağlantısını kapatır.
 
 
+## 3. Güvenlik Analizi ve Karşılaştırma (`security_advice_engine` fonksiyonu)
 
-## 🔄 Çalışma Akışı
+Bu aşama script’in **beyni** olarak düşünülebilir.
+
+- SAP’den gelen ham veriyi alır.
+- Tekrar `parametreler.xlsx` dosyasını okur.
+- Her parametre için:
+
+  - Önerilen değeri
+  - Uyulmadığında verilecek güvenlik tavsiyesini yükler.
+  - Mevcut SAP değerlerini önerilen değerlerle karşılaştırır.
+
+## 4. Değerlendirme Mantığı (`analyze_security_parameter` fonksiyonu)
+
+Karşılaştırma şu şekilde yapılır:
+
+### Sayısal Değerler
+
+Örnek:
+
+login/fails_to_user_lock = 3
+
+- Mevcut değer önerilen değerden büyük mü?
+- Küçük mü?
+- Eşit mi?
+
+### Metinsel Değerler
+
+Örnek:
+
+TRUE / FALSE
+
+- Mevcut değer önerilenle aynı mı?
+
+Sonuçlara göre durum belirlenir:
+
+- `SAME` – Aynı
+- `HIGH` – Yüksek
+- `LOW` – Düşük
+- `DIFFERENT` – Farklı
 
 
-SAP RSPARAM → Parametreleri Çek (Scripting)
-↓
-Parametreler.xlsx → Önerilen Değerlerle Karşılaştır
-↓
-Durum Belirle (LOW / HIGH / DIFFERENT / SAME)
-↓
-Parametreler.xlsx → İlgili Tavsiye Kolonunu Seç
-↓
-security_analysis_report.xlsx → Detaylı Rapor Yaz
+## 5. Raporlama
 
+Son aşamada:
 
+- Parametre adı
+- Mevcut değer
+- Önerilen değer
+- Karşılaştırma sonucu
+- Güvenlik tavsiyesi
 
-## ⚙️ Kurulum
+bir araya getirilir.
 
+Tüm bilgiler:
 
-pip install -r requirements.txt
+security_analysis_report.xlsx  dosyasına yazılır.
 
+Bu dosya denetimin nihai çıktısıdır ve:
 
-### Gereksinimler
-
-* Windows OS
-* SAP GUI (Scripting aktif olmalı)
-* Python 3.x
-
-
-## 🧠 Analiz Mantığı
-
-Her parametre için akıllı karşılaştırma yapılır:
-
-| Durum     | Açıklama          | Kullanılan Tavsiye |
-| --------- | ----------------- | ------------------ |
-| SAME      | Mevcut = Önerilen | ✅ Aynıysa          |
-| LOW       | Mevcut < Önerilen | ⚠️ Düşükse         |
-| HIGH      | Mevcut > Önerilen | ❌ Yüksekse         |
-| DIFFERENT | String farklı     | ❌ Yüksek/Farklı    |
-
+- Riskli parametreleri
+- Yapılması gereken aksiyonları açık şekilde gösterir.
 
 ## ⚠️ Önemli Notlar
 
@@ -77,15 +107,6 @@ Her parametre için akıllı karşılaştırma yapılır:
 * Kendi ortamınız için **SAP GUI Recorder** kullanarak ID’leri çıkarmanız gerekir
 * Test senaryoları `Parametre_Analiz_Kodu_Testleri.docx` dosyasında yer almaktadır
 * `Parametre_incelemesi.py` toplam 4 senaryo ile doğrulanmıştır
-
-
-## ✅ Test Edilenler
-
-* 122 SAP profil parametresi
-* 4 farklı karşılaştırma senaryosu
-* Sayısal + string değer kontrolleri
-* NOT_FOUND / ERROR durum yönetimi
-
 
 ## 🛡️ Amaç
 
